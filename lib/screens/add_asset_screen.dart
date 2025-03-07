@@ -19,20 +19,21 @@ class AddAssetScreen extends StatefulWidget {
 class _AddAssetScreenState extends State<AddAssetScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
-  final _currentValueController = TextEditingController();
+  final _totalValueController =
+      TextEditingController(); // Changed from currentValue to totalValue
   String _assetType = 'stock'; // 默认资产类型
   String? _selectedOwnerId;
   bool _isProxyManaged = false;
 
   // 股票特有字段
   final _tickerController = TextEditingController();
-  final _sharesController = TextEditingController();
-  final _stockPurchasePriceController = TextEditingController();
+  final _purchasePriceController =
+      TextEditingController(); // Total purchase price
 
   // 加密货币特有字段
   final _symbolController = TextEditingController();
-  final _amountController = TextEditingController();
-  final _cryptoPurchasePriceController = TextEditingController();
+  final _cryptoPurchasePriceController =
+      TextEditingController(); // Total purchase price
 
   // 现金特有字段
   final _bankNameController = TextEditingController();
@@ -42,12 +43,10 @@ class _AddAssetScreenState extends State<AddAssetScreen> {
   @override
   void dispose() {
     _nameController.dispose();
-    _currentValueController.dispose();
+    _totalValueController.dispose();
     _tickerController.dispose();
-    _sharesController.dispose();
-    _stockPurchasePriceController.dispose();
+    _purchasePriceController.dispose();
     _symbolController.dispose();
-    _amountController.dispose();
     _cryptoPurchasePriceController.dispose();
     _bankNameController.dispose();
     _accountNumberController.dispose();
@@ -155,17 +154,17 @@ class _AddAssetScreenState extends State<AddAssetScreen> {
         ),
         const SizedBox(height: 16),
         TextFormField(
-          controller: _currentValueController,
+          controller: _totalValueController,
           decoration: const InputDecoration(
-            labelText: '当前单价',
-            hintText: '输入当前市场价格',
+            labelText: '当前总价值',
+            hintText: '输入资产当前总价值',
             border: OutlineInputBorder(),
             prefixText: '¥ ',
           ),
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
           validator: (value) {
             if (value == null || value.isEmpty) {
-              return '请输入当前价格';
+              return '请输入当前总价值';
             }
             if (double.tryParse(value) == null) {
               return '请输入有效的数字';
@@ -273,26 +272,7 @@ class _AddAssetScreenState extends State<AddAssetScreen> {
         ),
         const SizedBox(height: 16),
         TextFormField(
-          controller: _sharesController,
-          decoration: const InputDecoration(
-            labelText: '持有股数',
-            hintText: '输入持有的股数',
-            border: OutlineInputBorder(),
-          ),
-          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          validator: (value) {
-            if (_assetType == 'stock' && (value == null || value.isEmpty)) {
-              return '请输入持有股数';
-            }
-            if (_assetType == 'stock' && double.tryParse(value!) == null) {
-              return '请输入有效的数字';
-            }
-            return null;
-          },
-        ),
-        const SizedBox(height: 16),
-        TextFormField(
-          controller: _stockPurchasePriceController,
+          controller: _purchasePriceController,
           decoration: const InputDecoration(
             labelText: '买入价格',
             hintText: '输入买入时的单价',
@@ -333,25 +313,6 @@ class _AddAssetScreenState extends State<AddAssetScreen> {
           validator: (value) {
             if (_assetType == 'crypto' && (value == null || value.isEmpty)) {
               return '请输入币种符号';
-            }
-            return null;
-          },
-        ),
-        const SizedBox(height: 16),
-        TextFormField(
-          controller: _amountController,
-          decoration: const InputDecoration(
-            labelText: '持有数量',
-            hintText: '输入持有的币数量',
-            border: OutlineInputBorder(),
-          ),
-          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          validator: (value) {
-            if (_assetType == 'crypto' && (value == null || value.isEmpty)) {
-              return '请输入持有数量';
-            }
-            if (_assetType == 'crypto' && double.tryParse(value!) == null) {
-              return '请输入有效的数字';
             }
             return null;
           },
@@ -446,7 +407,7 @@ class _AddAssetScreenState extends State<AddAssetScreen> {
     if (_formKey.currentState!.validate() && _selectedOwnerId != null) {
       final assetId = const Uuid().v4();
       final name = _nameController.text;
-      final currentValue = double.parse(_currentValueController.text);
+      final totalValue = double.parse(_totalValueController.text);
       final ownerId = _selectedOwnerId!;
       final now = DateTime.now();
 
@@ -457,13 +418,12 @@ class _AddAssetScreenState extends State<AddAssetScreen> {
           newAsset = StockAsset(
             id: assetId,
             name: name,
-            currentValue: currentValue,
+            totalValue: totalValue,
             ownerId: ownerId,
             isProxyManaged: _isProxyManaged,
             lastUpdated: now,
             ticker: _tickerController.text,
-            shares: double.parse(_sharesController.text),
-            purchasePrice: double.parse(_stockPurchasePriceController.text),
+            purchasePrice: double.parse(_purchasePriceController.text),
           );
           break;
 
@@ -471,12 +431,11 @@ class _AddAssetScreenState extends State<AddAssetScreen> {
           newAsset = CryptoAsset(
             id: assetId,
             name: name,
-            currentValue: currentValue,
+            totalValue: totalValue,
             ownerId: ownerId,
             isProxyManaged: _isProxyManaged,
             lastUpdated: now,
             symbol: _symbolController.text,
-            amount: double.parse(_amountController.text),
             purchasePrice: double.parse(_cryptoPurchasePriceController.text),
           );
           break;
@@ -485,7 +444,7 @@ class _AddAssetScreenState extends State<AddAssetScreen> {
           newAsset = CashAsset(
             id: assetId,
             name: name,
-            currentValue: currentValue, // 现金的当前价值就是存入的金额
+            totalValue: totalValue, // 现金的当前价值就是存入的金额
             ownerId: ownerId,
             isProxyManaged: _isProxyManaged,
             lastUpdated: now,

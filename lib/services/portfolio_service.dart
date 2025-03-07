@@ -3,47 +3,46 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/asset.dart';
 import '../models/owner.dart';
 import '../models/transaction.dart';
+import '../models/price_update.dart';
 
 class PortfolioService {
   List<Asset> _assets = [];
   List<Owner> _owners = [];
   List<Transaction> _transactions = [];
+  List<PriceUpdate> _priceUpdates = [];
 
-  // 获取所有资产
+  // Getters for lists
   List<Asset> get assets => _assets;
-
-  // 获取所有持有人
   List<Owner> get owners => _owners;
-
-  // 获取所有交易记录
   List<Transaction> get transactions => _transactions;
+  List<PriceUpdate> get priceUpdates => _priceUpdates;
 
-  // 计算总资产价值
+  // Calculate total asset value
   double getTotalAssetValue() {
     return _assets.fold(0, (sum, asset) => sum + asset.getValue());
   }
 
-  // 计算总份额
+  // Calculate total shares
   double getTotalShares() {
     return _owners.fold(0, (sum, owner) => sum + owner.shares);
   }
 
-  // 计算当前净值
+  // Calculate current net value
   double calculateNetValue() {
     double totalValue = getTotalAssetValue();
     double totalShares = getTotalShares();
 
-    if (totalShares <= 0) return 1.0; // 默认初始净值
+    if (totalShares <= 0) return 1.0; // Default initial net value
     return totalValue / totalShares;
   }
 
-  // 添加资产
+  // Add asset
   void addAsset(Asset asset) {
     _assets.add(asset);
     saveData();
   }
 
-  // 更新资产
+  // Update asset
   void updateAsset(Asset asset) {
     int index = _assets.indexWhere((a) => a.id == asset.id);
     if (index != -1) {
@@ -52,67 +51,132 @@ class PortfolioService {
     }
   }
 
-  // 删除资产
+  // Delete asset
   void deleteAsset(String assetId) {
     _assets.removeWhere((asset) => asset.id == assetId);
+    _priceUpdates.removeWhere((update) =>
+        update.assetId == assetId); // Clean up related price updates
     saveData();
   }
 
-  // 添加持有人
+  // Add owner
   void addOwner(Owner owner) {
     _owners.add(owner);
     saveData();
   }
 
-  // 处理存款（买入份额）
+  // Process transaction
   void processTransaction(String ownerId, double amount,
       TransactionType transactionType, String notes) {
     double currentNetValue = calculateNetValue();
-    double sharesAdded = amount / currentNetValue;
+    double sharesChange = amount / currentNetValue;
 
-    // 更新持有人份额
-    Owner? owner = _owners.firstWhere((o) => o.id == ownerId,
-        orElse: () => Owner(id: '', name: ''));
-    if (owner.id.isNotEmpty) {
-      owner.addShares(sharesAdded);
-
-      // 记录交易
-      _transactions.add(Transaction(
-        id: DateTime.now().millisecondsSinceEpoch.toString(),
-        ownerId: ownerId,
-        amount: amount,
-        shares: sharesAdded,
-        netValueAtTransaction: currentNetValue,
-        type: TransactionType.deposit,
-        timestamp: DateTime.now(),
-        notes: notes,
-      ));
-
-      saveData();
+    // Find owner
+    int ownerIndex = _owners.indexWhere((o) => o.id == ownerId);
+    if (ownerIndex == -1) {
+      throw Exception('Owner not found');
     }
+
+    Owner owner = _owners[ownerIndex];
+
+    if (transactionType == TransactionType.deposit) {
+      // Add shares for deposit
+      owner.shares += sharesChange;
+    } else {
+      // Remove shares for withdrawal
+      if (owner.shares < sharesChange) {
+        throw Exception('Insufficient shares for withdrawal');
+      }
+      owner.shares -= sharesChange;
+    }
+
+    // Record transaction
+    _transactions.add(Transaction(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      ownerId: ownerId,
+      amount: amount,
+      shares: sharesChange,
+      netValueAtTransaction: currentNetValue,
+      type: transactionType,
+      timestamp: DateTime.now(),
+      notes: notes,
+    ));
+
+    saveData();
   }
 
-  // 获取代理管理的资产
+  // Record asset value update
+  Future<void> recordAssetValueUpdate(String assetId, double newValue,
+      {String? note}) async {
+    final asset = _assets.firstWhere(
+      (a) => a.id == assetId,
+      orElse: () => throw Exception('Asset not found'),
+    );
+
+    // Create a new value update record
+    final priceUpdate = PriceUpdate(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      assetId: assetId,
+      value: newValue,
+      timestamp: DateTime.now(),
+      note: note,
+    );
+
+    // Update the asset's current value
+    asset.updateValue(newValue);
+
+    // Add the price update to the list
+    _priceUpdates.add(priceUpdate);
+
+    // Save the data
+    await saveData();
+  }
+
+  // Get price updates for an asset
+  List<PriceUpdate> getValueUpdatesForAsset(String assetId) {
+    return _priceUpdates.where((update) => update.assetId == assetId).toList()
+      ..sort((a, b) => b.timestamp.compareTo(a.timestamp));
+  }
+
+  // Get proxy managed assets
   List<Asset> getProxyManagedAssets() {
     return _assets.where((asset) => asset.isProxyManaged).toList();
   }
 
-  // 获取特定持有人的资产
+  // Get assets by owner
   List<Asset> getAssetsByOwner(String ownerId) {
     return _assets.where((asset) => asset.ownerId == ownerId).toList();
   }
 
-  // 保存数据到本地存储
+  // Save data to local storage
   Future<void> saveData() async {
     final prefs = await SharedPreferences.getInstance();
-    // 实际应用中应处理序列化问题，此处简化处理
-    // ...
+
+    // Save assets
+    final assetsJson =
+        _assets.map((asset) => jsonEncode(asset.toJson())).toList();
+    await prefs.setStringList('assets', assetsJson);
+
+    // Save owners
+    final ownersJson =
+        _owners.map((owner) => jsonEncode(owner.toJson())).toList();
+    await prefs.setStringList('owners', ownersJson);
+
+    // Save transactions
+    final transactionsJson = _transactions
+        .map((transaction) => jsonEncode(transaction.toJson()))
+        .toList();
+    await prefs.setStringList('transactions', transactionsJson);
+
+    // Save price updates
+    final priceUpdatesJson =
+        _priceUpdates.map((update) => jsonEncode(update.toJson())).toList();
+    await prefs.setStringList('priceUpdates', priceUpdatesJson);
   }
 
-  // 从本地存储加载数据
+  // Load data from local storage
   Future<void> loadData() async {
-    final prefs = await SharedPreferences.getInstance();
-    // 实际应用中应处理反序列化问题，此处简化处理
+    // Implement loading data from SharedPreferences
     // ...
   }
 }
