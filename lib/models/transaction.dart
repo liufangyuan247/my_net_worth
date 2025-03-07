@@ -1,3 +1,5 @@
+import 'package:intl/intl.dart';
+
 enum TransactionType {
   deposit,
   withdrawal,
@@ -32,23 +34,29 @@ class Transaction {
       'shares': shares,
       'netValueAtTransaction': netValueAtTransaction,
       'type': type.toString().split('.').last,
-      'timestamp': timestamp.toIso8601String(),
+      'timestamp': timestamp.millisecondsSinceEpoch,
       'notes': notes,
     };
   }
 
   factory Transaction.fromJson(Map<String, dynamic> json) {
     return Transaction(
-      id: json['id'] as String,
-      ownerId: json['ownerId'] as String,
-      amount: json['amount'] as double,
-      shares: json['shares'] as double,
-      netValueAtTransaction: json['netValueAtTransaction'] as double,
+      id: json['id'],
+      ownerId: json['ownerId'],
+      amount: json['amount'].toDouble(),
+      shares: json['shares'].toDouble(),
+      netValueAtTransaction: json['netValueAtTransaction'].toDouble(),
       type: json['type'] == 'deposit'
           ? TransactionType.deposit
           : TransactionType.withdrawal,
-      timestamp: DateTime.parse(json['timestamp'] as String),
-      notes: json['notes'] as String? ?? '',
+      timestamp: DateTime.fromMillisecondsSinceEpoch(json['timestamp']),
+      notes: json['notes'] ?? '',
     );
+  }
+
+  @override
+  String toString() {
+    final DateFormat formatter = DateFormat('yyyy-MM-dd HH:mm:ss');
+    return 'Transaction{id: $id, ownerId: $ownerId, amount: $amount, shares: $shares, type: $type, date: ${formatter.format(timestamp)}}';
   }
 }

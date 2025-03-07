@@ -31,31 +31,40 @@ class _TransactionScreenState extends State<TransactionScreen>
   // 交易历史
   late List<Transaction> _ownerTransactions;
 
+  // 订阅数据变更
+  late Stream<DataChangeEvent> _dataChangeStream;
+
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
 
-    // Add listener to refresh data when tab changes
-    _tabController.addListener(_handleTabChange);
+    // 初始化数据
+    _currentNetValue = widget.portfolioService.calculateNetValue();
+    _currentShares = widget.owner.shares;
+    _updateTransactionsList();
 
-    _updateData();
+    // 订阅数据变更事件
+    _dataChangeStream = widget.portfolioService.onDataChanged;
+    _dataChangeStream.listen(_handleDataChange);
   }
 
-  void _handleTabChange() {
-    // Update data when tab changes, especially when switching to transaction history
-    if (_tabController.index == 1) {
-      // Transaction history tab
-      setState(() {
-        _updateData();
-      });
+  void _handleDataChange(DataChangeEvent event) {
+    // 只有当相关的数据变更时才更新UI
+    if (event.type == DataChangeType.all ||
+        event.type == DataChangeType.transactions ||
+        event.type == DataChangeType.owners) {
+      if (mounted) {
+        setState(() {
+          _currentNetValue = widget.portfolioService.calculateNetValue();
+          _currentShares = widget.owner.shares;
+          _updateTransactionsList();
+        });
+      }
     }
   }
 
-  void _updateData() {
-    _currentNetValue = widget.portfolioService.calculateNetValue();
-    _currentShares = widget.owner.shares;
-
+  void _updateTransactionsList() {
     // 获取当前持有人的交易记录
     _ownerTransactions = widget.portfolioService.transactions
         .where((transaction) => transaction.ownerId == widget.owner.id)
@@ -67,7 +76,6 @@ class _TransactionScreenState extends State<TransactionScreen>
 
   @override
   void dispose() {
-    _tabController.removeListener(_handleTabChange);
     _tabController.dispose();
     _amountController.dispose();
     _notesController.dispose();
@@ -424,7 +432,7 @@ class _TransactionScreenState extends State<TransactionScreen>
     );
   }
 
-  void _handleTransaction(TransactionType type) {
+  void _handleTransaction(TransactionType type) async {
     // 验证输入
     if (_amountController.text.isEmpty) {
       _showError('请输入金额');
@@ -446,10 +454,14 @@ class _TransactionScreenState extends State<TransactionScreen>
       }
     }
 
+    // 显示加载对话框
+    final loadingDialog = _showLoadingDialog();
+
     // 执行交易
     try {
+      print("开始执行交易");
       if (type == TransactionType.deposit) {
-        widget.portfolioService.processTransaction(
+        await widget.portfolioService.processTransaction(
           widget.owner.id,
           amount,
           TransactionType.deposit,
@@ -457,7 +469,7 @@ class _TransactionScreenState extends State<TransactionScreen>
         );
         _showSuccess('购买份额成功');
       } else {
-        widget.portfolioService.processTransaction(
+        await widget.portfolioService.processTransaction(
           widget.owner.id,
           amount,
           TransactionType.withdrawal,
@@ -466,18 +478,49 @@ class _TransactionScreenState extends State<TransactionScreen>
         _showSuccess('赎回份额成功');
       }
 
-      // 清除输入并刷新数据
+      // 关闭加载对话框
+      if (Navigator.of(context).canPop()) {
+        Navigator.of(context).pop();
+      }
+
+      // 清除输入
       _amountController.clear();
       _notesController.clear();
-      setState(() {
-        _updateData();
-      });
 
-      // Switch to transaction history tab to show the new transaction
+      // 切换到交易历史标签页 - 不需要手动更新数据，因为会通过数据流监听更新
       _tabController.animateTo(1);
     } catch (e) {
+      // 关闭加载对话框
+      if (Navigator.of(context).canPop()) {
+        Navigator.of(context).pop();
+      }
       _showError('交易失败: ${e.toString()}');
     }
+  }
+
+  // Show a loading dialog while processing transaction
+  AlertDialog _showLoadingDialog() {
+    AlertDialog alert = AlertDialog(
+      content: Row(
+        children: [
+          const CircularProgressIndicator(),
+          Container(
+            margin: const EdgeInsets.only(left: 16),
+            child: const Text("处理交易中..."),
+          ),
+        ],
+      ),
+    );
+
+    showDialog(
+      barrierDismissible: false,
+      context: context,
+      builder: (BuildContext context) {
+        return alert;
+      },
+    );
+
+    return alert;
   }
 
   void _showError(String message) {

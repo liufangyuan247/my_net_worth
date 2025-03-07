@@ -10,7 +10,6 @@ import 'transaction_screen.dart';
 import 'settings_screen.dart';
 import '../models/owner.dart';
 import '../models/transaction.dart';
-import '../theme/app_theme.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -22,27 +21,79 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final PortfolioService _portfolioService = PortfolioService();
   int _selectedIndex = 0;
+  bool _isLoading = true;
+
+  // 订阅数据变更
+  late Stream<DataChangeEvent> _dataChangeStream;
 
   @override
   void initState() {
     super.initState();
-    _loadData();
+
+    // 订阅数据变更事件
+    _dataChangeStream = _portfolioService.onDataChanged;
+    _dataChangeStream.listen(_handleDataChange);
+
+    // 初次加载数据
+    _initializeData();
   }
 
-  Future<void> _loadData() async {
-    await _portfolioService.loadData();
-    setState(() {});
+  // 处理数据变更事件
+  void _handleDataChange(DataChangeEvent event) {
+    if (mounted) {
+      setState(() {
+        // 数据已更新，更新UI
+        print("数据已变更，更新UI: ${event.type}");
+      });
+    }
+  }
+
+  // 初始化数据
+  Future<void> _initializeData() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    // 初次加载时，可以直接使用服务的loadData方法
+    // 因为服务构造时已经调用了loadData，这里只是确保数据已加载完成
+    await Future.delayed(const Duration(milliseconds: 500));
+
+    setState(() {
+      _isLoading = false;
+    });
+  }
+
+  // 手动刷新数据
+  Future<void> _refreshData() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    await _portfolioService.refreshData();
+
+    setState(() {
+      _isLoading = false;
+    });
   }
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('资产净值管理')),
+        body: const Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('资产净值管理'),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: _loadData,
+            onPressed: _refreshData,
             tooltip: '刷新数据',
           ),
           IconButton(
@@ -66,7 +117,8 @@ class _HomeScreenState extends State<HomeScreen> {
                       portfolioService: _portfolioService,
                     ),
                   ),
-                ).then((_) => _loadData());
+                );
+                // 数据变更会通过Stream自动通知，不需要手动刷新
               }
             },
             itemBuilder: (context) => [
@@ -135,7 +187,8 @@ class _HomeScreenState extends State<HomeScreen> {
               }
             },
           ),
-        ).then((_) => _loadData());
+        );
+        // 数据变更会通过Stream自动通知，不需要手动刷新
       },
       tooltip: _getFloatingActionButtonTooltip(),
       child: const Icon(Icons.add),
@@ -186,7 +239,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     builder: (context) =>
                         AddAssetScreen(portfolioService: _portfolioService),
                   ),
-                ).then((_) => _loadData());
+                );
+                // 数据变更会通过Stream自动通知，不需要手动刷新
               },
               child: const Text('添加第一个资产'),
             ),
@@ -206,7 +260,8 @@ class _HomeScreenState extends State<HomeScreen> {
               portfolioService: _portfolioService,
             ),
           ),
-        ).then((_) => _loadData());
+        );
+        // 数据变更会通过Stream自动通知，不需要手动刷新
       },
     );
   }
@@ -286,7 +341,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   builder: (context) =>
                       AddAssetScreen(portfolioService: _portfolioService),
                 ),
-              ).then((_) => _loadData());
+              );
+              // 数据变更会通过Stream自动通知，不需要手动刷新
             },
             child: const Text('添加新资产'),
           ),
@@ -311,7 +367,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     builder: (context) =>
                         AddOwnerScreen(portfolioService: _portfolioService),
                   ),
-                ).then((_) => _loadData());
+                );
+                // 数据变更会通过Stream自动通知，不需要手动刷新
               },
               child: const Text('添加第一个持有人'),
             ),
@@ -351,7 +408,8 @@ class _HomeScreenState extends State<HomeScreen> {
                       portfolioService: _portfolioService,
                     ),
                   ),
-                ).then((_) => _loadData());
+                );
+                // 数据变更会通过Stream自动通知，不需要手动刷新
               },
             ),
           ),
@@ -378,7 +436,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     builder: (context) => AddTransactionScreen(
                         portfolioService: _portfolioService),
                   ),
-                ).then((_) => _loadData());
+                );
+                // 数据变更会通过Stream自动通知，不需要手动刷新
               },
               child: const Text('添加第一笔交易'),
             ),
@@ -388,12 +447,13 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     // Sort transactions by date, most recent first
-    transactions.sort((a, b) => b.timestamp.compareTo(a.timestamp));
+    final sortedTransactions = List<Transaction>.from(transactions)
+      ..sort((a, b) => b.timestamp.compareTo(a.timestamp));
 
     return ListView.builder(
-      itemCount: transactions.length,
+      itemCount: sortedTransactions.length,
       itemBuilder: (context, index) {
-        final transaction = transactions[index];
+        final transaction = sortedTransactions[index];
         final owner = _portfolioService.owners.firstWhere(
           (o) => o.id == transaction.ownerId,
           orElse: () => Owner(id: '', name: '未知'),
