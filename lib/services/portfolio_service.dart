@@ -65,51 +65,31 @@ class PortfolioService {
   }
 
   // 处理存款（买入份额）
-  void processDeposit(String ownerId, double amount, {String notes = ''}) {
+  void processTransaction(String ownerId, double amount,
+      TransactionType transactionType, String notes) {
     double currentNetValue = calculateNetValue();
     double sharesAdded = amount / currentNetValue;
 
     // 更新持有人份额
-    Owner? owner = _owners.firstWhere((o) => o.id == ownerId);
-    owner.addShares(sharesAdded);
+    Owner? owner = _owners.firstWhere((o) => o.id == ownerId,
+        orElse: () => Owner(id: '', name: ''));
+    if (owner.id.isNotEmpty) {
+      owner.addShares(sharesAdded);
 
-    // 记录交易
-    _transactions.add(Transaction(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      ownerId: ownerId,
-      amount: amount,
-      shares: sharesAdded,
-      netValueAtTransaction: currentNetValue,
-      type: TransactionType.deposit,
-      timestamp: DateTime.now(),
-      notes: notes,
-    ));
+      // 记录交易
+      _transactions.add(Transaction(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        ownerId: ownerId,
+        amount: amount,
+        shares: sharesAdded,
+        netValueAtTransaction: currentNetValue,
+        type: TransactionType.deposit,
+        timestamp: DateTime.now(),
+        notes: notes,
+      ));
 
-    saveData();
-  }
-
-  // 处理提款（卖出份额）
-  void processWithdrawal(String ownerId, double amount, {String notes = ''}) {
-    double currentNetValue = calculateNetValue();
-    double sharesToWithdraw = amount / currentNetValue;
-
-    // 更新持有人份额
-    Owner owner = _owners.firstWhere((o) => o.id == ownerId);
-    owner.subtractShares(sharesToWithdraw);
-
-    // 记录交易
-    _transactions.add(Transaction(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      ownerId: ownerId,
-      amount: amount,
-      shares: sharesToWithdraw,
-      netValueAtTransaction: currentNetValue,
-      type: TransactionType.withdrawal,
-      timestamp: DateTime.now(),
-      notes: notes,
-    ));
-
-    saveData();
+      saveData();
+    }
   }
 
   // 获取代理管理的资产

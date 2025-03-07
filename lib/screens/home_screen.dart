@@ -3,6 +3,8 @@ import '../services/portfolio_service.dart';
 import '../widgets/asset_list.dart';
 import 'asset_detail_screen.dart';
 import 'add_asset_screen.dart';
+import 'add_owner_screen.dart';
+import 'add_transaction_screen.dart';
 import 'transaction_screen.dart';
 import '../models/owner.dart';
 import '../models/transaction.dart';
@@ -85,8 +87,19 @@ class _HomeScreenState extends State<HomeScreen> {
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) =>
-                  AddAssetScreen(portfolioService: _portfolioService),
+              builder: (context) {
+                switch (_selectedIndex) {
+                  case 1:
+                    return AddAssetScreen(portfolioService: _portfolioService);
+                  case 2:
+                    return AddOwnerScreen(portfolioService: _portfolioService);
+                  case 3:
+                    return AddTransactionScreen(
+                        portfolioService: _portfolioService);
+                  default:
+                    return AddAssetScreen(portfolioService: _portfolioService);
+                }
+              },
             ),
           ).then((_) => setState(() {}));
         },

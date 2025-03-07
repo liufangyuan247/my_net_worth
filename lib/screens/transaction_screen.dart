@@ -434,17 +434,19 @@ class _TransactionScreenState extends State<TransactionScreen>
     // 执行交易
     try {
       if (type == TransactionType.deposit) {
-        widget.portfolioService.processDeposit(
+        widget.portfolioService.processTransaction(
           widget.owner.id,
           amount,
-          notes: _notesController.text,
+          TransactionType.deposit,
+          _notesController.text,
         );
         _showSuccess('购买份额成功');
       } else {
-        widget.portfolioService.processWithdrawal(
+        widget.portfolioService.processTransaction(
           widget.owner.id,
           amount,
-          notes: _notesController.text,
+          TransactionType.withdrawal,
+          _notesController.text,
         );
         _showSuccess('赎回份额成功');
       }
