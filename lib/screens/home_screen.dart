@@ -324,8 +324,6 @@ class _HomeScreenState extends State<HomeScreen> {
       itemCount: _portfolioService.owners.length,
       itemBuilder: (context, index) {
         final owner = _portfolioService.owners[index];
-        final ownerAssets = _portfolioService.getAssetsByOwner(owner.id);
-        final assetCount = ownerAssets.length;
 
         return Card(
           margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
@@ -338,7 +336,8 @@ class _HomeScreenState extends State<HomeScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text('份额: ${owner.shares.toStringAsFixed(4)}'),
-                Text('资产数: $assetCount'),
+                Text(
+                    '价值: ¥${owner.shares * _portfolioService.calculateNetValue()}'),
               ],
             ),
             trailing: IconButton(

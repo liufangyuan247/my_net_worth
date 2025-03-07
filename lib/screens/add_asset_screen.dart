@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:uuid/uuid.dart';
 import '../models/asset.dart';
-import '../models/owner.dart';
 import '../services/portfolio_service.dart';
 
 class AddAssetScreen extends StatefulWidget {
@@ -18,39 +16,34 @@ class AddAssetScreen extends StatefulWidget {
 
 class _AddAssetScreenState extends State<AddAssetScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _nameController = TextEditingController();
-  final _totalValueController =
-      TextEditingController(); // Changed from currentValue to totalValue
-  String _assetType = 'stock'; // 默认资产类型
-  String? _selectedOwnerId;
+
+  // General asset fields
+  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _totalValueController = TextEditingController();
+
+  // Stock specific fields
+  final TextEditingController _tickerController = TextEditingController();
+
+  // Crypto specific fields
+  final TextEditingController _symbolController = TextEditingController();
+
+  // Cash specific fields
+  final TextEditingController _bankNameController = TextEditingController();
+  final TextEditingController _accountNumberController =
+      TextEditingController();
+
+  String _assetType = 'stock'; // Default asset type
   bool _isProxyManaged = false;
-
-  // 股票特有字段
-  final _tickerController = TextEditingController();
-  final _purchasePriceController =
-      TextEditingController(); // Total purchase price
-
-  // 加密货币特有字段
-  final _symbolController = TextEditingController();
-  final _cryptoPurchasePriceController =
-      TextEditingController(); // Total purchase price
-
-  // 现金特有字段
-  final _bankNameController = TextEditingController();
-  final _accountNumberController = TextEditingController();
-  final _interestRateController = TextEditingController(text: '0.0');
+  bool _isProcessing = false;
 
   @override
   void dispose() {
     _nameController.dispose();
     _totalValueController.dispose();
     _tickerController.dispose();
-    _purchasePriceController.dispose();
     _symbolController.dispose();
-    _cryptoPurchasePriceController.dispose();
     _bankNameController.dispose();
     _accountNumberController.dispose();
-    _interestRateController.dispose();
     super.dispose();
   }
 
@@ -71,17 +64,19 @@ class _AddAssetScreenState extends State<AddAssetScreen> {
               const SizedBox(height: 24),
               _buildBasicInfoFields(),
               const SizedBox(height: 24),
-              _buildOwnershipFields(),
+              _buildManagementFields(),
               const SizedBox(height: 24),
               _buildAssetTypeSpecificFields(),
               const SizedBox(height: 32),
               Center(
                 child: ElevatedButton(
-                  onPressed: _saveAsset,
+                  onPressed: _isProcessing ? null : _saveAsset,
                   style: ElevatedButton.styleFrom(
                     minimumSize: const Size(200, 50),
                   ),
-                  child: const Text('保存资产'),
+                  child: _isProcessing
+                      ? const CircularProgressIndicator()
+                      : const Text('保存资产'),
                 ),
               ),
             ],
@@ -169,6 +164,9 @@ class _AddAssetScreenState extends State<AddAssetScreen> {
             if (double.tryParse(value) == null) {
               return '请输入有效的数字';
             }
+            if (double.parse(value) < 0) {
+              return '价值不能为负数';
+            }
             return null;
           },
         ),
@@ -176,50 +174,15 @@ class _AddAssetScreenState extends State<AddAssetScreen> {
     );
   }
 
-  Widget _buildOwnershipFields() {
-    final owners = widget.portfolioService.owners;
-
+  Widget _buildManagementFields() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
-          '所有权信息',
+          '管理信息',
           style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 8),
-        if (owners.isEmpty)
-          const Padding(
-            padding: EdgeInsets.only(bottom: 8.0),
-            child: Text(
-              '没有持有人记录，请在持有人页面添加',
-              style: TextStyle(color: Colors.red),
-            ),
-          ),
-        DropdownButtonFormField<String>(
-          decoration: const InputDecoration(
-            labelText: '所有人',
-            border: OutlineInputBorder(),
-          ),
-          value: _selectedOwnerId,
-          items: [
-            ...owners.map((owner) => DropdownMenuItem(
-                  value: owner.id,
-                  child: Text(owner.name),
-                )),
-          ],
-          onChanged: (value) {
-            setState(() {
-              _selectedOwnerId = value;
-            });
-          },
-          validator: (value) {
-            if (value == null || value.isEmpty) {
-              return '请选择所有人';
-            }
-            return null;
-          },
-        ),
-        const SizedBox(height: 16),
         SwitchListTile(
           title: const Text('代理管理'),
           subtitle: const Text('此资产是否为代表他人管理'),
@@ -270,26 +233,6 @@ class _AddAssetScreenState extends State<AddAssetScreen> {
             return null;
           },
         ),
-        const SizedBox(height: 16),
-        TextFormField(
-          controller: _purchasePriceController,
-          decoration: const InputDecoration(
-            labelText: '买入价格',
-            hintText: '输入买入时的单价',
-            border: OutlineInputBorder(),
-            prefixText: '¥ ',
-          ),
-          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          validator: (value) {
-            if (_assetType == 'stock' && (value == null || value.isEmpty)) {
-              return '请输入买入价格';
-            }
-            if (_assetType == 'stock' && double.tryParse(value!) == null) {
-              return '请输入有效的数字';
-            }
-            return null;
-          },
-        ),
       ],
     );
   }
@@ -313,26 +256,6 @@ class _AddAssetScreenState extends State<AddAssetScreen> {
           validator: (value) {
             if (_assetType == 'crypto' && (value == null || value.isEmpty)) {
               return '请输入币种符号';
-            }
-            return null;
-          },
-        ),
-        const SizedBox(height: 16),
-        TextFormField(
-          controller: _cryptoPurchasePriceController,
-          decoration: const InputDecoration(
-            labelText: '买入价格',
-            hintText: '输入买入时的单价',
-            border: OutlineInputBorder(),
-            prefixText: '¥ ',
-          ),
-          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          validator: (value) {
-            if (_assetType == 'crypto' && (value == null || value.isEmpty)) {
-              return '请输入买入价格';
-            }
-            if (_assetType == 'crypto' && double.tryParse(value!) == null) {
-              return '请输入有效的数字';
             }
             return null;
           },
@@ -379,97 +302,90 @@ class _AddAssetScreenState extends State<AddAssetScreen> {
             return null;
           },
         ),
-        const SizedBox(height: 16),
-        TextFormField(
-          controller: _interestRateController,
-          decoration: const InputDecoration(
-            labelText: '年利率',
-            hintText: '例如：0.03 表示 3%',
-            border: OutlineInputBorder(),
-            suffixText: '%',
-          ),
-          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          validator: (value) {
-            if (_assetType == 'cash' && (value == null || value.isEmpty)) {
-              return '请输入年利率';
-            }
-            if (_assetType == 'cash' && double.tryParse(value!) == null) {
-              return '请输入有效的数字';
-            }
-            return null;
-          },
-        ),
       ],
     );
   }
 
-  void _saveAsset() {
-    if (_formKey.currentState!.validate() && _selectedOwnerId != null) {
-      final assetId = const Uuid().v4();
-      final name = _nameController.text;
-      final totalValue = double.parse(_totalValueController.text);
-      final ownerId = _selectedOwnerId!;
-      final now = DateTime.now();
+  void _saveAsset() async {
+    if (_formKey.currentState!.validate()) {
+      setState(() {
+        _isProcessing = true;
+      });
 
-      Asset newAsset;
+      try {
+        final assetId = DateTime.now().millisecondsSinceEpoch.toString();
+        final name = _nameController.text;
+        final totalValue = double.parse(_totalValueController.text);
+        final now = DateTime.now();
 
-      switch (_assetType) {
-        case 'stock':
-          newAsset = StockAsset(
-            id: assetId,
-            name: name,
-            totalValue: totalValue,
-            ownerId: ownerId,
-            isProxyManaged: _isProxyManaged,
-            lastUpdated: now,
-            ticker: _tickerController.text,
-            purchasePrice: double.parse(_purchasePriceController.text),
+        Asset newAsset;
+
+        switch (_assetType) {
+          case 'stock':
+            newAsset = StockAsset(
+              id: assetId,
+              name: name,
+              totalValue: totalValue,
+              isProxyManaged: _isProxyManaged,
+              lastUpdated: now,
+              ticker: _tickerController.text,
+            );
+            break;
+
+          case 'crypto':
+            newAsset = CryptoAsset(
+              id: assetId,
+              name: name,
+              totalValue: totalValue,
+              isProxyManaged: _isProxyManaged,
+              lastUpdated: now,
+              symbol: _symbolController.text,
+            );
+            break;
+
+          case 'cash':
+            newAsset = CashAsset(
+              id: assetId,
+              name: name,
+              totalValue: totalValue,
+              isProxyManaged: _isProxyManaged,
+              lastUpdated: now,
+              bankName: _bankNameController.text,
+              accountNumber: _accountNumberController.text,
+            );
+            break;
+
+          default:
+            throw Exception("Unknown asset type");
+        }
+
+        widget.portfolioService.addAsset(newAsset);
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('资产添加成功'),
+              backgroundColor: Colors.green,
+            ),
           );
-          break;
-
-        case 'crypto':
-          newAsset = CryptoAsset(
-            id: assetId,
-            name: name,
-            totalValue: totalValue,
-            ownerId: ownerId,
-            isProxyManaged: _isProxyManaged,
-            lastUpdated: now,
-            symbol: _symbolController.text,
-            purchasePrice: double.parse(_cryptoPurchasePriceController.text),
+          Navigator.pop(context, true); // 返回并传递更新标志
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('添加资产失败: ${e.toString()}'),
+              backgroundColor: Colors.red,
+            ),
           );
-          break;
-
-        case 'cash':
-          newAsset = CashAsset(
-            id: assetId,
-            name: name,
-            totalValue: totalValue, // 现金的当前价值就是存入的金额
-            ownerId: ownerId,
-            isProxyManaged: _isProxyManaged,
-            lastUpdated: now,
-            bankName: _bankNameController.text,
-            accountNumber: _accountNumberController.text,
-            interestRate:
-                double.parse(_interestRateController.text) / 100, // 转换为小数
-          );
-          break;
-
-        default:
-          return;
+        }
+      } finally {
+        if (mounted) {
+          setState(() {
+            _isProcessing = false;
+          });
+        }
       }
-
-      widget.portfolioService.addAsset(newAsset);
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('资产添加成功')),
-      );
-
-      Navigator.pop(context, true); // 返回并传递更新标志
-    } else if (_selectedOwnerId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('请先在持有人页面添加持有人')),
-      );
     }
   }
 }

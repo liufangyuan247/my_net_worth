@@ -35,7 +35,21 @@ class _TransactionScreenState extends State<TransactionScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+
+    // Add listener to refresh data when tab changes
+    _tabController.addListener(_handleTabChange);
+
     _updateData();
+  }
+
+  void _handleTabChange() {
+    // Update data when tab changes, especially when switching to transaction history
+    if (_tabController.index == 1) {
+      // Transaction history tab
+      setState(() {
+        _updateData();
+      });
+    }
   }
 
   void _updateData() {
@@ -53,6 +67,7 @@ class _TransactionScreenState extends State<TransactionScreen>
 
   @override
   void dispose() {
+    _tabController.removeListener(_handleTabChange);
     _tabController.dispose();
     _amountController.dispose();
     _notesController.dispose();
@@ -457,6 +472,9 @@ class _TransactionScreenState extends State<TransactionScreen>
       setState(() {
         _updateData();
       });
+
+      // Switch to transaction history tab to show the new transaction
+      _tabController.animateTo(1);
     } catch (e) {
       _showError('交易失败: ${e.toString()}');
     }

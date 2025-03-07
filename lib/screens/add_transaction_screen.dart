@@ -22,13 +22,17 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
   final TextEditingController _amountController = TextEditingController();
   TransactionType _transactionType = TransactionType.deposit;
   String _transactionNotes = '';
-  Owner? _selectedOwner;
+  String?
+      _selectedOwnerId; // Change this to store the owner ID instead of the Owner object
   bool _isProcessing = false;
 
   @override
   void initState() {
     super.initState();
-    _selectedOwner = widget.owner;
+    // If an owner was passed, select it
+    if (widget.owner != null) {
+      _selectedOwnerId = widget.owner!.id;
+    }
   }
 
   @override
@@ -37,8 +41,20 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
     super.dispose();
   }
 
+  Owner? _getSelectedOwner() {
+    if (_selectedOwnerId == null) return null;
+    try {
+      return widget.portfolioService.owners.firstWhere(
+        (owner) => owner.id == _selectedOwnerId,
+      );
+    } catch (e) {
+      return null; // Owner not found
+    }
+  }
+
   Future<void> _addTransaction() async {
-    if (_selectedOwner == null) {
+    final selectedOwner = _getSelectedOwner();
+    if (selectedOwner == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('请选择持有人'),
@@ -58,7 +74,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
 
         // Create the transaction
         widget.portfolioService.processTransaction(
-          _selectedOwner!.id,
+          selectedOwner.id,
           amount,
           _transactionType,
           _transactionNotes,
@@ -71,7 +87,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
               backgroundColor: Colors.green,
             ),
           );
-          Navigator.pop(context);
+          Navigator.pop(context, true);
         }
       } catch (e) {
         if (mounted) {
@@ -95,6 +111,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
   @override
   Widget build(BuildContext context) {
     final owners = widget.portfolioService.owners;
+    final selectedOwner = _getSelectedOwner();
 
     return Scaffold(
       appBar: AppBar(
@@ -117,29 +134,30 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                     children: [
                       const Text('选择持有人:'),
                       const SizedBox(height: 8),
-                      DropdownButtonFormField<Owner>(
-                        value: _selectedOwner,
+                      DropdownButtonFormField<String>(
+                        value: _selectedOwnerId,
                         decoration: const InputDecoration(
                           border: OutlineInputBorder(),
                           contentPadding:
                               EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                         ),
                         items: owners.map((Owner owner) {
-                          return DropdownMenuItem<Owner>(
-                            value: owner,
+                          return DropdownMenuItem<String>(
+                            value: owner
+                                .id, // Use ID as the value, not the Owner object
                             child: Text(
                                 '${owner.name} (${owner.shares.toStringAsFixed(4)} 份)'),
                           );
                         }).toList(),
-                        onChanged: (Owner? newValue) {
+                        onChanged: (String? newValue) {
                           setState(() {
-                            _selectedOwner = newValue;
+                            _selectedOwnerId = newValue;
                           });
                         },
                         isExpanded: true,
                         hint: const Text('选择持有人'),
-                        validator: (owner) {
-                          if (owner == null) {
+                        validator: (ownerId) {
+                          if (ownerId == null) {
                             return '请选择持有人';
                           }
                           return null;
@@ -152,7 +170,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
               const SizedBox(height: 16),
 
               // Owner information if selected
-              if (_selectedOwner != null)
+              if (selectedOwner != null)
                 Card(
                   elevation: 2,
                   child: Padding(
@@ -161,12 +179,12 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          '持有人: ${_selectedOwner!.name}',
+                          '持有人: ${selectedOwner.name}',
                           style: Theme.of(context).textTheme.subtitle1,
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          '当前份额: ${_selectedOwner!.shares.toStringAsFixed(4)}',
+                          '当前份额: ${selectedOwner.shares.toStringAsFixed(4)}',
                           style: Theme.of(context).textTheme.subtitle2,
                         ),
                       ],

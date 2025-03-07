@@ -50,9 +50,7 @@ class _AssetDetailScreenState extends State<AssetDetailScreen> {
           ),
           IconButton(
             icon: const Icon(Icons.delete),
-            onPressed: () {
-              // 删除资产的逻辑
-            },
+            onPressed: _showDeleteConfirmationDialog,
             tooltip: '删除资产',
           ),
         ],
@@ -96,6 +94,30 @@ class _AssetDetailScreenState extends State<AssetDetailScreen> {
     );
   }
 
+  void _showDeleteConfirmationDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('删除资产'),
+        content: Text('确定要删除 ${widget.asset.name} 吗？此操作不可撤销。'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () {
+              widget.portfolioService.deleteAsset(widget.asset.id);
+              Navigator.pop(context); // Close dialog
+              Navigator.pop(context, true); // Return to previous screen
+            },
+            child: const Text('删除', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildAssetInfoCard() {
     return Card(
       elevation: 4,
@@ -109,16 +131,16 @@ class _AssetDetailScreenState extends State<AssetDetailScreen> {
               children: [
                 Text(
                   widget.asset.name,
-                  style: Theme.of(context).textTheme.headline5,
+                  style: Theme.of(context).textTheme.titleLarge,
                 ),
                 Text(
                   '¥${widget.asset.totalValue.toStringAsFixed(2)}',
-                  style: Theme.of(context).textTheme.headline5,
+                  style: Theme.of(context).textTheme.titleLarge,
                 ),
               ],
             ),
             const Divider(),
-            _buildAssetSpecificInfo(),
+            _buildAssetTypeSpecificInfo(),
           ],
         ),
       ),
@@ -126,8 +148,6 @@ class _AssetDetailScreenState extends State<AssetDetailScreen> {
   }
 
   Widget _buildAssetDetailsCard() {
-    String ownerName = _findOwnerName() ?? '未知';
-
     return Card(
       elevation: 4,
       child: Padding(
@@ -137,93 +157,58 @@ class _AssetDetailScreenState extends State<AssetDetailScreen> {
           children: [
             Text(
               '资产详情',
-              style: Theme.of(context).textTheme.headline6,
+              style: Theme.of(context).textTheme.titleLarge,
             ),
             const Divider(),
-            _buildDetailRow('所有人', ownerName),
             _buildDetailRow(
                 '管理方式', widget.asset.isProxyManaged ? '代理管理' : '自我管理'),
             _buildDetailRow(
                 '最后更新',
                 DateFormat('yyyy-MM-dd HH:mm')
                     .format(widget.asset.lastUpdated)),
+            _buildDetailRow('资产类型', _getAssetTypeName()),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildAssetSpecificInfo() {
+  String _getAssetTypeName() {
+    if (widget.asset is StockAsset) {
+      return '股票';
+    } else if (widget.asset is CryptoAsset) {
+      return '加密货币';
+    } else if (widget.asset is CashAsset) {
+      return '现金';
+    }
+    return '其他资产';
+  }
+
+  Widget _buildAssetTypeSpecificInfo() {
     if (widget.asset is StockAsset) {
       final stockAsset = widget.asset as StockAsset;
-      return Column(
+      return Row(
+        mainAxisAlignment: MainAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text('股票代码: ${stockAsset.ticker}'),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text('购买价格: ¥${stockAsset.purchasePrice.toStringAsFixed(2)}'),
-              Text(
-                '收益率: ${_calculateProfitPercentage(stockAsset.totalValue, stockAsset.purchasePrice)}%',
-                style: TextStyle(
-                  color: stockAsset.totalValue >= stockAsset.purchasePrice
-                      ? Colors.green
-                      : Colors.red,
-                ),
-              ),
-            ],
-          ),
+          Text('股票代码: ${stockAsset.ticker}'),
         ],
       );
     } else if (widget.asset is CryptoAsset) {
       final cryptoAsset = widget.asset as CryptoAsset;
-      return Column(
+      return Row(
+        mainAxisAlignment: MainAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text('代币符号: ${cryptoAsset.symbol}'),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text('购买价格: ¥${cryptoAsset.purchasePrice.toStringAsFixed(2)}'),
-              Text(
-                '收益率: ${_calculateProfitPercentage(cryptoAsset.totalValue, cryptoAsset.purchasePrice)}%',
-                style: TextStyle(
-                  color: cryptoAsset.totalValue >= cryptoAsset.purchasePrice
-                      ? Colors.green
-                      : Colors.red,
-                ),
-              ),
-            ],
-          ),
+          Text('代币符号: ${cryptoAsset.symbol}'),
         ],
       );
     } else if (widget.asset is CashAsset) {
       final cashAsset = widget.asset as CashAsset;
       return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text('银行: ${cashAsset.bankName}'),
-              Text('账号: ${_maskAccountNumber(cashAsset.accountNumber)}'),
-            ],
-          ),
-          if (cashAsset.interestRate > 0)
-            Padding(
-              padding: const EdgeInsets.only(top: 8.0),
-              child: Text('利率: ${cashAsset.interestRate}%'),
-            ),
+          Text('银行: ${cashAsset.bankName}'),
+          const SizedBox(height: 4),
+          Text('账号: ${_maskAccountNumber(cashAsset.accountNumber)}'),
         ],
       );
     } else {
@@ -241,7 +226,7 @@ class _AssetDetailScreenState extends State<AssetDetailScreen> {
           children: [
             Text(
               '价值更新历史',
-              style: Theme.of(context).textTheme.headline6,
+              style: Theme.of(context).textTheme.titleLarge,
             ),
             const SizedBox(height: 8),
             valueUpdates.isEmpty
@@ -265,7 +250,7 @@ class _AssetDetailScreenState extends State<AssetDetailScreen> {
                             Text(
                               DateFormat('yyyy-MM-dd HH:mm')
                                   .format(update.timestamp),
-                              style: Theme.of(context).textTheme.caption,
+                              style: Theme.of(context).textTheme.bodySmall,
                             ),
                           ],
                         ),
@@ -296,24 +281,8 @@ class _AssetDetailScreenState extends State<AssetDetailScreen> {
     );
   }
 
-  String _calculateProfitPercentage(double currentValue, double purchasePrice) {
-    if (purchasePrice == 0) return '0.00';
-    double percentage = ((currentValue - purchasePrice) / purchasePrice) * 100;
-    return percentage.toStringAsFixed(2);
-  }
-
   String _maskAccountNumber(String accountNumber) {
     if (accountNumber.length <= 8) return accountNumber;
     return '${accountNumber.substring(0, 4)}****${accountNumber.substring(accountNumber.length - 4)}';
-  }
-
-  String? _findOwnerName() {
-    try {
-      final owner = widget.portfolioService.owners
-          .firstWhere((o) => o.id == widget.asset.ownerId);
-      return owner.name;
-    } catch (e) {
-      return null;
-    }
   }
 }

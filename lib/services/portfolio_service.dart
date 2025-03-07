@@ -143,9 +143,9 @@ class PortfolioService {
     return _assets.where((asset) => asset.isProxyManaged).toList();
   }
 
-  // Get assets by owner
-  List<Asset> getAssetsByOwner(String ownerId) {
-    return _assets.where((asset) => asset.ownerId == ownerId).toList();
+  // Get self managed assets
+  List<Asset> getSelfManagedAssets() {
+    return _assets.where((asset) => !asset.isProxyManaged).toList();
   }
 
   // Save data to local storage
@@ -242,11 +242,9 @@ class PortfolioService {
       id: '${DateTime.now().millisecondsSinceEpoch}_1',
       name: '示例股票',
       totalValue: 10000.0,
-      ownerId: owner.id,
       isProxyManaged: false,
       lastUpdated: now,
       ticker: '600000',
-      purchasePrice: 9500.0,
     );
     _assets.add(stockAsset);
 
@@ -254,11 +252,9 @@ class PortfolioService {
       id: '${DateTime.now().millisecondsSinceEpoch}_2',
       name: '示例加密货币',
       totalValue: 5000.0,
-      ownerId: owner.id,
       isProxyManaged: false,
       lastUpdated: now,
       symbol: 'BTC',
-      purchasePrice: 4800.0,
     );
     _assets.add(cryptoAsset);
 
@@ -266,12 +262,10 @@ class PortfolioService {
       id: '${DateTime.now().millisecondsSinceEpoch}_3',
       name: '示例银行存款',
       totalValue: 20000.0,
-      ownerId: owner.id,
       isProxyManaged: false,
       lastUpdated: now,
       bankName: '建设银行',
       accountNumber: '6217********1234',
-      interestRate: 0.03,
     );
     _assets.add(cashAsset);
 
@@ -294,5 +288,11 @@ class PortfolioService {
 
     // Save all this sample data
     await saveData();
+  }
+
+  // Get assets by owner is no longer needed
+  // Instead, we use a generic method to get all assets
+  List<Asset> getAllAssets() {
+    return _assets;
   }
 }

@@ -1,23 +1,24 @@
 class Owner {
   String id;
   String name;
-  double shares;
+  double shares; // 份额
 
   Owner({
     required this.id,
     required this.name,
-    this.shares = 0.0,
+    this.shares = 0,
   });
 
   void addShares(double amount) {
     shares += amount;
   }
 
-  void removeShares(double amount) {
-    if (shares < amount) {
+  void subtractShares(double amount) {
+    if (shares >= amount) {
+      shares -= amount;
+    } else {
       throw Exception('Insufficient shares');
     }
-    shares -= amount;
   }
 
   Map<String, dynamic> toJson() {
@@ -30,9 +31,9 @@ class Owner {
 
   factory Owner.fromJson(Map<String, dynamic> json) {
     return Owner(
-      id: json['id'] as String,
-      name: json['name'] as String,
-      shares: json['shares'] as double,
+      id: json['id'],
+      name: json['name'],
+      shares: json['shares'],
     );
   }
 }

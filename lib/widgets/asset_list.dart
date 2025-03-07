@@ -28,7 +28,6 @@ class AssetList extends StatelessWidget {
         return AssetListItem(
           asset: asset,
           onTap: () => onTap(asset),
-          showOwner: showOwner,
         );
       },
     );
@@ -38,13 +37,11 @@ class AssetList extends StatelessWidget {
 class AssetListItem extends StatelessWidget {
   final Asset asset;
   final VoidCallback onTap;
-  final bool showOwner;
 
   const AssetListItem({
     Key? key,
     required this.asset,
     required this.onTap,
-    this.showOwner = false,
   }) : super(key: key);
 
   @override
@@ -70,14 +67,6 @@ class AssetListItem extends StatelessWidget {
               style: const TextStyle(fontSize: 14.0),
             ),
             const SizedBox(height: 2.0),
-            if (showOwner)
-              Text(
-                '所有人: ${asset.isProxyManaged ? "代理" : "自有"} - ID: ${asset.ownerId}',
-                style: TextStyle(
-                  fontSize: 12.0,
-                  color: Colors.grey[700],
-                ),
-              ),
             Text(
               '最后更新: ${_formatDate(asset.lastUpdated)}',
               style: TextStyle(
