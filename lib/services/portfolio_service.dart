@@ -176,7 +176,123 @@ class PortfolioService {
 
   // Load data from local storage
   Future<void> loadData() async {
-    // Implement loading data from SharedPreferences
-    // ...
+    try {
+      final prefs = await SharedPreferences.getInstance();
+
+      // Load assets
+      final assetsJson = prefs.getStringList('assets') ?? [];
+      _assets =
+          assetsJson.map((json) => Asset.fromJson(jsonDecode(json))).toList();
+
+      // Load owners
+      final ownersJson = prefs.getStringList('owners') ?? [];
+      _owners =
+          ownersJson.map((json) => Owner.fromJson(jsonDecode(json))).toList();
+
+      // Load transactions
+      final transactionsJson = prefs.getStringList('transactions') ?? [];
+      _transactions = transactionsJson
+          .map((json) => Transaction.fromJson(jsonDecode(json)))
+          .toList();
+
+      // Load price updates
+      final priceUpdatesJson = prefs.getStringList('priceUpdates') ?? [];
+      _priceUpdates = priceUpdatesJson
+          .map((json) => PriceUpdate.fromJson(jsonDecode(json)))
+          .toList();
+    } catch (e) {
+      print('Error loading data: $e');
+      // Initialize with empty data if there's an error
+      _assets = [];
+      _owners = [];
+      _transactions = [];
+      _priceUpdates = [];
+    }
+  }
+
+  // Create a method to reset all data (useful for testing or if data gets corrupted)
+  Future<void> resetData() async {
+    _assets = [];
+    _owners = [];
+    _transactions = [];
+    _priceUpdates = [];
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.clear();
+  }
+
+  // Add a method to initialize with sample data (useful for first-time users)
+  Future<void> initializeWithSampleData() async {
+    if (_assets.isNotEmpty || _owners.isNotEmpty) {
+      return; // Don't initialize if there's already data
+    }
+
+    // Create sample owner
+    final owner = Owner(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      name: '默认用户',
+      shares: 100.0, // Initial shares
+    );
+    _owners.add(owner);
+
+    final now = DateTime.now();
+
+    // Create sample assets
+    final stockAsset = StockAsset(
+      id: '${DateTime.now().millisecondsSinceEpoch}_1',
+      name: '示例股票',
+      totalValue: 10000.0,
+      ownerId: owner.id,
+      isProxyManaged: false,
+      lastUpdated: now,
+      ticker: '600000',
+      purchasePrice: 9500.0,
+    );
+    _assets.add(stockAsset);
+
+    final cryptoAsset = CryptoAsset(
+      id: '${DateTime.now().millisecondsSinceEpoch}_2',
+      name: '示例加密货币',
+      totalValue: 5000.0,
+      ownerId: owner.id,
+      isProxyManaged: false,
+      lastUpdated: now,
+      symbol: 'BTC',
+      purchasePrice: 4800.0,
+    );
+    _assets.add(cryptoAsset);
+
+    final cashAsset = CashAsset(
+      id: '${DateTime.now().millisecondsSinceEpoch}_3',
+      name: '示例银行存款',
+      totalValue: 20000.0,
+      ownerId: owner.id,
+      isProxyManaged: false,
+      lastUpdated: now,
+      bankName: '建设银行',
+      accountNumber: '6217********1234',
+      interestRate: 0.03,
+    );
+    _assets.add(cashAsset);
+
+    // Create some sample price updates
+    _priceUpdates.add(PriceUpdate(
+      id: '${DateTime.now().millisecondsSinceEpoch}_1',
+      assetId: stockAsset.id,
+      value: 9500.0,
+      timestamp: now.subtract(const Duration(days: 30)),
+      note: '初始记录',
+    ));
+
+    _priceUpdates.add(PriceUpdate(
+      id: '${DateTime.now().millisecondsSinceEpoch}_2',
+      assetId: stockAsset.id,
+      value: 10000.0,
+      timestamp: now,
+      note: '最新价格',
+    ));
+
+    // Save all this sample data
+    await saveData();
   }
 }

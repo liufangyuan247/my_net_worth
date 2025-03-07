@@ -1,14 +1,17 @@
-enum TransactionType { deposit, withdrawal }
+enum TransactionType {
+  deposit,
+  withdrawal,
+}
 
 class Transaction {
-  String id;
-  String ownerId;
-  double amount; // 金额
-  double shares; // 份额
-  double netValueAtTransaction; // 交易时的净值
-  TransactionType type;
-  DateTime timestamp;
-  String notes;
+  final String id;
+  final String ownerId;
+  final double amount;
+  final double shares;
+  final double netValueAtTransaction;
+  final TransactionType type;
+  final DateTime timestamp;
+  final String notes;
 
   Transaction({
     required this.id,
@@ -28,7 +31,7 @@ class Transaction {
       'amount': amount,
       'shares': shares,
       'netValueAtTransaction': netValueAtTransaction,
-      'type': type.toString(),
+      'type': type.toString().split('.').last,
       'timestamp': timestamp.toIso8601String(),
       'notes': notes,
     };
@@ -36,16 +39,16 @@ class Transaction {
 
   factory Transaction.fromJson(Map<String, dynamic> json) {
     return Transaction(
-      id: json['id'],
-      ownerId: json['ownerId'],
-      amount: json['amount'],
-      shares: json['shares'],
-      netValueAtTransaction: json['netValueAtTransaction'],
-      type: TransactionType.values.firstWhere(
-        (e) => e.toString() == json['type'],
-      ),
-      timestamp: DateTime.parse(json['timestamp']),
-      notes: json['notes'],
+      id: json['id'] as String,
+      ownerId: json['ownerId'] as String,
+      amount: json['amount'] as double,
+      shares: json['shares'] as double,
+      netValueAtTransaction: json['netValueAtTransaction'] as double,
+      type: json['type'] == 'deposit'
+          ? TransactionType.deposit
+          : TransactionType.withdrawal,
+      timestamp: DateTime.parse(json['timestamp'] as String),
+      notes: json['notes'] as String? ?? '',
     );
   }
 }

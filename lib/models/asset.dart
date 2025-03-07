@@ -28,6 +28,48 @@ abstract class Asset {
 
   Map<String, dynamic> toJson();
 
+  static Asset fromJson(Map<String, dynamic> json) {
+    final type = json['type'] as String;
+    switch (type) {
+      case 'stock':
+        return StockAsset(
+          id: json['id'] as String,
+          name: json['name'] as String,
+          totalValue: json['totalValue'] as double,
+          ownerId: json['ownerId'] as String,
+          isProxyManaged: json['isProxyManaged'] as bool,
+          lastUpdated: DateTime.parse(json['lastUpdated'] as String),
+          ticker: json['ticker'] as String,
+          purchasePrice: json['purchasePrice'] as double,
+        );
+      case 'crypto':
+        return CryptoAsset(
+          id: json['id'] as String,
+          name: json['name'] as String,
+          totalValue: json['totalValue'] as double,
+          ownerId: json['ownerId'] as String,
+          isProxyManaged: json['isProxyManaged'] as bool,
+          lastUpdated: DateTime.parse(json['lastUpdated'] as String),
+          symbol: json['symbol'] as String,
+          purchasePrice: json['purchasePrice'] as double,
+        );
+      case 'cash':
+        return CashAsset(
+          id: json['id'] as String,
+          name: json['name'] as String,
+          totalValue: json['totalValue'] as double,
+          ownerId: json['ownerId'] as String,
+          isProxyManaged: json['isProxyManaged'] as bool,
+          lastUpdated: DateTime.parse(json['lastUpdated'] as String),
+          bankName: json['bankName'] as String,
+          accountNumber: json['accountNumber'] as String,
+          interestRate: json['interestRate'] as double,
+        );
+      default:
+        throw Exception('Unknown asset type: $type');
+    }
+  }
+
   @override
   String toString() {
     return 'Asset{id: $id, name: $name, totalValue: $totalValue, owner: $ownerId, proxy: $isProxyManaged}';
