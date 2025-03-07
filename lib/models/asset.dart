@@ -1,151 +1,176 @@
+import 'dart:convert';
+
+enum AssetType { stock, crypto, cash, realEstate, other }
+
 abstract class Asset {
-  String id;
-  String name;
+  final String id;
+  final String name;
+  final AssetType type;
   double totalValue;
-  bool
-      isProxyManaged; // Whether this asset is managed on behalf of someone else
   DateTime lastUpdated;
 
   Asset({
     required this.id,
     required this.name,
+    required this.type,
     required this.totalValue,
-    this.isProxyManaged = false,
     required this.lastUpdated,
   });
 
-  // Get the current total value of the asset
+  // 获取资产价值
   double getValue() {
     return totalValue;
   }
 
-  // Update asset total value
+  // 更新资产价值
   void updateValue(double newValue) {
     totalValue = newValue;
     lastUpdated = DateTime.now();
   }
 
-  Map<String, dynamic> toJson();
+  // 转换为JSON
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'name': name,
+      'type': type.toString().split('.').last,
+      'totalValue': totalValue,
+      'lastUpdated': lastUpdated.millisecondsSinceEpoch,
+    };
+  }
 
+  // 从JSON创建
   static Asset fromJson(Map<String, dynamic> json) {
-    final type = json['type'] as String;
+    final AssetType type = _assetTypeFromString(json['type']);
+
     switch (type) {
-      case 'stock':
+      case AssetType.stock:
         return StockAsset(
-          id: json['id'] as String,
-          name: json['name'] as String,
-          totalValue: json['totalValue'] as double,
-          isProxyManaged: json['isProxyManaged'] as bool,
-          lastUpdated: DateTime.parse(json['lastUpdated'] as String),
-          ticker: json['ticker'] as String,
+          id: json['id'],
+          name: json['name'],
+          totalValue: json['totalValue'].toDouble(),
+          lastUpdated: DateTime.fromMillisecondsSinceEpoch(json['lastUpdated']),
         );
-      case 'crypto':
+      case AssetType.crypto:
         return CryptoAsset(
-          id: json['id'] as String,
-          name: json['name'] as String,
-          totalValue: json['totalValue'] as double,
-          isProxyManaged: json['isProxyManaged'] as bool,
-          lastUpdated: DateTime.parse(json['lastUpdated'] as String),
-          symbol: json['symbol'] as String,
+          id: json['id'],
+          name: json['name'],
+          totalValue: json['totalValue'].toDouble(),
+          lastUpdated: DateTime.fromMillisecondsSinceEpoch(json['lastUpdated']),
         );
-      case 'cash':
+      case AssetType.cash:
         return CashAsset(
-          id: json['id'] as String,
-          name: json['name'] as String,
-          totalValue: json['totalValue'] as double,
-          isProxyManaged: json['isProxyManaged'] as bool,
-          lastUpdated: DateTime.parse(json['lastUpdated'] as String),
-          bankName: json['bankName'] as String,
-          accountNumber: json['accountNumber'] as String,
+          id: json['id'],
+          name: json['name'],
+          totalValue: json['totalValue'].toDouble(),
+          lastUpdated: DateTime.fromMillisecondsSinceEpoch(json['lastUpdated']),
         );
+      case AssetType.realEstate:
+        return RealEstateAsset(
+          id: json['id'],
+          name: json['name'],
+          totalValue: json['totalValue'].toDouble(),
+          lastUpdated: DateTime.fromMillisecondsSinceEpoch(json['lastUpdated']),
+        );
+      case AssetType.other:
       default:
-        throw Exception('Unknown asset type: $type');
+        return OtherAsset(
+          id: json['id'],
+          name: json['name'],
+          totalValue: json['totalValue'].toDouble(),
+          lastUpdated: DateTime.fromMillisecondsSinceEpoch(json['lastUpdated']),
+        );
     }
   }
 
-  @override
-  String toString() {
-    return 'Asset{id: $id, name: $name, totalValue: $totalValue, proxy: $isProxyManaged}';
+  // 将字符串转换为AssetType枚举
+  static AssetType _assetTypeFromString(String typeStr) {
+    switch (typeStr) {
+      case 'stock':
+        return AssetType.stock;
+      case 'crypto':
+        return AssetType.crypto;
+      case 'cash':
+        return AssetType.cash;
+      case 'realEstate':
+        return AssetType.realEstate;
+      default:
+        return AssetType.other;
+    }
   }
 }
 
 class StockAsset extends Asset {
-  String ticker;
-
   StockAsset({
-    required super.id,
-    required super.name,
-    required super.totalValue,
-    super.isProxyManaged,
-    required super.lastUpdated,
-    required this.ticker,
-  });
-
-  @override
-  Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'name': name,
-      'totalValue': totalValue,
-      'isProxyManaged': isProxyManaged,
-      'lastUpdated': lastUpdated.toIso8601String(),
-      'type': 'stock',
-      'ticker': ticker,
-    };
-  }
+    required String id,
+    required String name,
+    required double totalValue,
+    required DateTime lastUpdated,
+  }) : super(
+          id: id,
+          name: name,
+          type: AssetType.stock,
+          totalValue: totalValue,
+          lastUpdated: lastUpdated,
+        );
 }
 
 class CryptoAsset extends Asset {
-  String symbol;
-
   CryptoAsset({
-    required super.id,
-    required super.name,
-    required super.totalValue,
-    super.isProxyManaged,
-    required super.lastUpdated,
-    required this.symbol,
-  });
-
-  @override
-  Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'name': name,
-      'totalValue': totalValue,
-      'isProxyManaged': isProxyManaged,
-      'lastUpdated': lastUpdated.toIso8601String(),
-      'type': 'crypto',
-      'symbol': symbol,
-    };
-  }
+    required String id,
+    required String name,
+    required double totalValue,
+    required DateTime lastUpdated,
+  }) : super(
+          id: id,
+          name: name,
+          type: AssetType.crypto,
+          totalValue: totalValue,
+          lastUpdated: lastUpdated,
+        );
 }
 
 class CashAsset extends Asset {
-  String bankName;
-  String accountNumber;
-
   CashAsset({
-    required super.id,
-    required super.name,
-    required super.totalValue,
-    super.isProxyManaged,
-    required super.lastUpdated,
-    required this.bankName,
-    required this.accountNumber,
-  });
+    required String id,
+    required String name,
+    required double totalValue,
+    required DateTime lastUpdated,
+  }) : super(
+          id: id,
+          name: name,
+          type: AssetType.cash,
+          totalValue: totalValue,
+          lastUpdated: lastUpdated,
+        );
+}
 
-  @override
-  Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'name': name,
-      'totalValue': totalValue,
-      'isProxyManaged': isProxyManaged,
-      'lastUpdated': lastUpdated.toIso8601String(),
-      'type': 'cash',
-      'bankName': bankName,
-      'accountNumber': accountNumber,
-    };
-  }
+class RealEstateAsset extends Asset {
+  RealEstateAsset({
+    required String id,
+    required String name,
+    required double totalValue,
+    required DateTime lastUpdated,
+  }) : super(
+          id: id,
+          name: name,
+          type: AssetType.realEstate,
+          totalValue: totalValue,
+          lastUpdated: lastUpdated,
+        );
+}
+
+class OtherAsset extends Asset {
+  OtherAsset({
+    required String id,
+    required String name,
+    required double totalValue,
+    required DateTime lastUpdated,
+  }) : super(
+          id: id,
+          name: name,
+          type: AssetType.other,
+          totalValue: totalValue,
+          lastUpdated: lastUpdated,
+        );
 }

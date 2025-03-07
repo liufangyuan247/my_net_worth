@@ -140,7 +140,6 @@ class _AssetDetailScreenState extends State<AssetDetailScreen> {
               ],
             ),
             const Divider(),
-            _buildAssetTypeSpecificInfo(),
           ],
         ),
       ),
@@ -161,8 +160,6 @@ class _AssetDetailScreenState extends State<AssetDetailScreen> {
             ),
             const Divider(),
             _buildDetailRow(
-                '管理方式', widget.asset.isProxyManaged ? '代理管理' : '自我管理'),
-            _buildDetailRow(
                 '最后更新',
                 DateFormat('yyyy-MM-dd HH:mm')
                     .format(widget.asset.lastUpdated)),
@@ -174,45 +171,17 @@ class _AssetDetailScreenState extends State<AssetDetailScreen> {
   }
 
   String _getAssetTypeName() {
-    if (widget.asset is StockAsset) {
-      return '股票';
-    } else if (widget.asset is CryptoAsset) {
-      return '加密货币';
-    } else if (widget.asset is CashAsset) {
-      return '现金';
-    }
-    return '其他资产';
-  }
-
-  Widget _buildAssetTypeSpecificInfo() {
-    if (widget.asset is StockAsset) {
-      final stockAsset = widget.asset as StockAsset;
-      return Row(
-        mainAxisAlignment: MainAxisAlignment.start,
-        children: [
-          Text('股票代码: ${stockAsset.ticker}'),
-        ],
-      );
-    } else if (widget.asset is CryptoAsset) {
-      final cryptoAsset = widget.asset as CryptoAsset;
-      return Row(
-        mainAxisAlignment: MainAxisAlignment.start,
-        children: [
-          Text('代币符号: ${cryptoAsset.symbol}'),
-        ],
-      );
-    } else if (widget.asset is CashAsset) {
-      final cashAsset = widget.asset as CashAsset;
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('银行: ${cashAsset.bankName}'),
-          const SizedBox(height: 4),
-          Text('账号: ${_maskAccountNumber(cashAsset.accountNumber)}'),
-        ],
-      );
-    } else {
-      return const SizedBox.shrink();
+    switch (widget.asset.type) {
+      case AssetType.stock:
+        return '股票';
+      case AssetType.crypto:
+        return '加密货币';
+      case AssetType.cash:
+        return '现金/存款';
+      case AssetType.realEstate:
+        return '房地产';
+      case AssetType.other:
+        return '其他资产';
     }
   }
 
@@ -279,10 +248,5 @@ class _AssetDetailScreenState extends State<AssetDetailScreen> {
         ],
       ),
     );
-  }
-
-  String _maskAccountNumber(String accountNumber) {
-    if (accountNumber.length <= 8) return accountNumber;
-    return '${accountNumber.substring(0, 4)}****${accountNumber.substring(accountNumber.length - 4)}';
   }
 }

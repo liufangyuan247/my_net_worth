@@ -192,16 +192,6 @@ class PortfolioService {
       ..sort((a, b) => b.timestamp.compareTo(a.timestamp));
   }
 
-  // 获取代理管理的资产
-  List<Asset> getProxyManagedAssets() {
-    return _assets.where((asset) => asset.isProxyManaged).toList();
-  }
-
-  // 获取自管理资产
-  List<Asset> getSelfManagedAssets() {
-    return _assets.where((asset) => !asset.isProxyManaged).toList();
-  }
-
   // 保存数据到本地存储
   Future<void> saveData() async {
     // 如果已经在保存，直接返回
@@ -357,9 +347,7 @@ class PortfolioService {
       id: '${DateTime.now().millisecondsSinceEpoch}_1',
       name: '示例股票',
       totalValue: 10000.0,
-      isProxyManaged: false,
       lastUpdated: now,
-      ticker: '600000',
     );
     _assets.add(stockAsset);
 
@@ -367,9 +355,7 @@ class PortfolioService {
       id: '${DateTime.now().millisecondsSinceEpoch}_2',
       name: '示例加密货币',
       totalValue: 5000.0,
-      isProxyManaged: false,
       lastUpdated: now,
-      symbol: 'BTC',
     );
     _assets.add(cryptoAsset);
 
@@ -377,10 +363,7 @@ class PortfolioService {
       id: '${DateTime.now().millisecondsSinceEpoch}_3',
       name: '示例银行存款',
       totalValue: 20000.0,
-      isProxyManaged: false,
       lastUpdated: now,
-      bankName: '建设银行',
-      accountNumber: '6217********1234',
     );
     _assets.add(cashAsset);
 
