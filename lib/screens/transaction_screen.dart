@@ -84,22 +84,72 @@ class _TransactionScreenState extends State<TransactionScreen>
 
   @override
   Widget build(BuildContext context) {
+    // 获取应用的主题数据
+    final theme = Theme.of(context);
+    final isDarkMode = theme.brightness == Brightness.dark;
+
     return Scaffold(
       appBar: AppBar(
         title: Text('${widget.owner.name} 的交易'),
-        bottom: TabBar(
-          controller: _tabController,
-          tabs: const [
-            Tab(text: '购买/赎回', icon: Icon(Icons.swap_horiz)),
-            Tab(text: '交易历史', icon: Icon(Icons.history)),
-          ],
-        ),
       ),
-      body: TabBarView(
-        controller: _tabController,
+      body: Column(
         children: [
-          _buildTransactionForm(),
-          _buildTransactionHistory(),
+          // 替换原来在AppBar中的TabBar，使用自定义TabBar，增强视觉对比
+          Material(
+            color: theme.appBarTheme.backgroundColor ?? theme.primaryColor,
+            elevation: 4,
+            child: TabBar(
+              controller: _tabController,
+              // 使用更鲜明的颜色对比
+              labelColor: Colors.white,
+              unselectedLabelColor:
+                  isDarkMode ? Colors.white60 : Colors.white70,
+              // 增加选中标签的字体粗细
+              labelStyle: const TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+              ),
+              unselectedLabelStyle: const TextStyle(
+                fontWeight: FontWeight.normal,
+                fontSize: 14,
+              ),
+              // 添加选中标签下方的指示器，使其更加明显
+              indicator: BoxDecoration(
+                color: isDarkMode ? Colors.blue[700] : Colors.blue[800],
+                border: const Border(
+                  bottom: BorderSide(
+                    color: Colors.white,
+                    width: 3,
+                  ),
+                ),
+              ),
+              indicatorWeight: 4,
+              indicatorColor: Colors.white,
+              tabs: const [
+                Tab(
+                  icon: Icon(Icons.swap_horiz),
+                  text: '购买/赎回',
+                  // 增加标签内边距，让Tab更加明显
+                  iconMargin: EdgeInsets.only(bottom: 4),
+                ),
+                Tab(
+                  icon: Icon(Icons.history),
+                  text: '交易历史',
+                  iconMargin: EdgeInsets.only(bottom: 4),
+                ),
+              ],
+            ),
+          ),
+          // 使用Expanded包裹TabBarView，确保它能够填充剩余空间
+          Expanded(
+            child: TabBarView(
+              controller: _tabController,
+              children: [
+                _buildTransactionForm(),
+                _buildTransactionHistory(),
+              ],
+            ),
+          ),
         ],
       ),
     );

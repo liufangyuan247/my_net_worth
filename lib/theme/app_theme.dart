@@ -161,6 +161,13 @@ ThemeData _getLightTheme() {
         return Colors.grey.withOpacity(0.5);
       }),
     ),
+    tabBarTheme: const TabBarTheme(
+      labelColor: Colors.blue,
+      unselectedLabelColor: Colors.grey,
+      indicatorSize: TabBarIndicatorSize.tab,
+      labelStyle: TextStyle(fontWeight: FontWeight.bold),
+      unselectedLabelStyle: TextStyle(fontWeight: FontWeight.normal),
+    ),
   );
 }
 
@@ -285,6 +292,13 @@ ThemeData _getDarkTheme() {
         }
         return Colors.grey.withOpacity(0.5);
       }),
+    ),
+    tabBarTheme: const TabBarTheme(
+      labelColor: Colors.blue,
+      unselectedLabelColor: Colors.grey,
+      indicatorSize: TabBarIndicatorSize.tab,
+      labelStyle: TextStyle(fontWeight: FontWeight.bold),
+      unselectedLabelStyle: TextStyle(fontWeight: FontWeight.normal),
     ),
   );
 }
